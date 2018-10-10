@@ -96,7 +96,7 @@ func main() {
 		Name: to.StringPtr("frontendEndpoint1")}
 
 	//create routing door client
-	fdRoutingDoorsClient := frontdoor.NewRoutingRulesClient(subID)
+	fdRoutingRulesClient := frontdoor.NewRoutingRulesClient(subID)
 
 	subResourceFrontendEndpoints := frontdoor.SubResource{
 		ID: to.StringPtr("frontendEndpoint1" + "/frontendEndpoints/frontendEndpoint1")}
@@ -120,7 +120,7 @@ func main() {
 	authorizer, err := auth.NewAuthorizerFromEnvironment()
 	if err == nil {
 		fdBackendClient.Authorizer = authorizer
-		fdRoutingDoorsClient.Authorizer = authorizer
+		fdRoutingRulesClient.Authorizer = authorizer
 		fdFrontendEndpointClient.Authorizer = authorizer
 	}
 
@@ -135,10 +135,22 @@ func main() {
 			log.WithError(err).Fatal("Failed to check fd name")
 		}
 
-		fdFrontendEndpointClient.CreateOrUpdate(ctx, "resourceGroupName", "testfdname", "fdFrontendEndpoint", fdFrontendEndpoint)
-		fdBackendClient.CreateOrUpdate(ctx, "resourceGroupName", "testfdname", "fdBackendPool", fdbackendPool)
+		_, err = fdFrontendEndpointClient.CreateOrUpdate(ctx, "resourceGroupName", "testfdname", "fdFrontendEndpoint", fdFrontendEndpoint)
 
-		fdRoutingDoorsClient.CreateOrUpdate(ctx, "resourceGroupName", "testfdname", "fdRoutingRule", fdRoutingRule)
+		if err != nil {
+			log.WithError(err).Fatal("Faild to create FrontendEndpoint")
+		}
+
+		_, err = fdBackendClient.CreateOrUpdate(ctx, "resourceGroupName", "testfdname", "fdBackendPool", fdbackendPool)
+
+		if err != nil {
+			log.WithError(err).Fatal("Faild to create BackendPool")
+		}
+		_, err = fdRoutingRulesClient.CreateOrUpdate(ctx, "resourceGroupName", "testfdname", "fdRoutingRule", fdRoutingRule)
+
+		if err != nil {
+			log.WithError(err).Fatal("Faild to create RoutingRules")
+		}
 
 		fmt.Println(result)
 		fmt.Println(ingress.GetName())
