@@ -1,6 +1,6 @@
 .PHONY: dependencies test integration checks
 
-all: dependencies checks test build
+all: dependencies checks test build docker
 
 dependencies:
 	dep ensure -v --vendor-only
@@ -17,3 +17,5 @@ build:
 checks:
 	gometalinter --vendor --disable-all --enable=errcheck --enable=vet --enable=gofmt --enable=golint --enable=deadcode --enable=varcheck --enable=structcheck --deadline=15m ./...
 
+docker:
+	docker build -t lawrencegripper/azurefrontdoor-ingress .
