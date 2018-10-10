@@ -86,9 +86,9 @@ func main() {
 	// creating BackendPool
 	fdbackendPool := frontdoor.BackendPool{
 		BackendPoolProperties: fdbackendPoolProp,
-		Name:                  to.StringPtr("backendPool1"),
-		Type:                  to.StringPtr("Custom host"),
-		ID:                    to.StringPtr("1234")}
+		Name: to.StringPtr("backendPool1"),
+		Type: to.StringPtr("Custom host"),
+		ID:   to.StringPtr("1234")}
 
 	//create frontend Endpoint
 	fdFrontendEndpointClient := frontdoor.NewFrontendEndpointsClient(subID)
@@ -114,7 +114,7 @@ func main() {
 
 	fdRoutingRule := frontdoor.RoutingRule{
 		RoutingRuleProperties: &fdRoutingRuleProperties,
-		Name:                  to.StringPtr("routing1")}
+		Name: to.StringPtr("routing1")}
 
 	// create an authorizer from env vars or Azure Managed Service Idenity
 	authorizer, err := auth.NewAuthorizerFromEnvironment()
