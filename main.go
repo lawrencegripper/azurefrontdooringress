@@ -70,10 +70,70 @@ func main() {
 	fmt.Println(serviceIP)
 
 	fdBackendClient := frontdoor.NewBackendPoolsClient(subID)
+
+	//create Backend object
+	fdBackend := frontdoor.Backend{
+		Address:      to.StringPtr("backend1"),
+		HTTPPort:     to.Int32Ptr(80),
+		HTTPSPort:    to.Int32Ptr(443),
+		EnabledState: frontdoor.EnabledStateEnumDisabled,
+		Weight:       to.Int32Ptr(50),
+		Priority:     to.Int32Ptr(1)}
+
+	// creating BackendPoolProperties
+	slices := &[]frontdoor.Backend{fdBackend}
+
+	subResourceHealth := &frontdoor.SubResource{
+		ID: to.StringPtr("GEN-UNIQUE" + "/healthProbeSettings/healthProbeSettings1")}
+
+	subResourceLoad := &frontdoor.SubResource{
+		ID: to.StringPtr("GEN-UNIQUE" + "/healthProbeSettings/healthProbeSettings1")}
+
+	fdbackendPoolProp := &frontdoor.BackendPoolProperties{
+		ResourceState:         frontdoor.ResourceStateCreating,
+		Backends:              slices,
+		HealthProbeSettings:   subResourceHealth,
+		LoadBalancingSettings: subResourceLoad}
+
+	// creating BackendPool
+	fdbackendPool := frontdoor.BackendPool{
+		BackendPoolProperties: fdbackendPoolProp,
+		Name: to.StringPtr("backendPool1"),
+		Type: to.StringPtr("Custom host"),
+		ID:   to.StringPtr("1234")}
+
+	//create frontend Endpoint
+	fdFrontendEndpointClient := frontdoor.NewFrontendEndpointsClient(subID)
+	fdFrontendEndpoint := frontdoor.FrontendEndpoint{
+		Name: to.StringPtr("frontendEndpoint1")}
+
+	//create routing door client
+	fdRoutingRulesClient := frontdoor.NewRoutingRulesClient(subID)
+
+	subResourceFrontendEndpoints := frontdoor.SubResource{
+		ID: to.StringPtr("frontendEndpoint1" + "/frontendEndpoints/frontendEndpoint1")}
+
+	frontendEndpointSlices := &[]frontdoor.SubResource{subResourceFrontendEndpoints}
+	subResourceBackendPool := &frontdoor.SubResource{
+		ID: to.StringPtr("backendPool1" + "/backendPools/backendPool1")}
+
+	fdRoutingRuleProperties := frontdoor.RoutingRuleProperties{
+		ResourceState:      frontdoor.ResourceStateCreating,
+		EnabledState:       "Enabled",
+		ForwardingProtocol: "MatchRequest",
+		FrontendEndpoints:  frontendEndpointSlices,
+		BackendPool:        subResourceBackendPool}
+
+	fdRoutingRule := frontdoor.RoutingRule{
+		RoutingRuleProperties: &fdRoutingRuleProperties,
+		Name: to.StringPtr("routing1")}
+
 	// create an authorizer from env vars or Azure Managed Service Idenity
 	authorizer, err := auth.NewAuthorizerFromEnvironment()
 	if err == nil {
 		fdBackendClient.Authorizer = authorizer
+		fdRoutingRulesClient.Authorizer = authorizer
+		fdFrontendEndpointClient.Authorizer = authorizer
 	}
 
 	for _, ingressObj := range ingressStore.List() {
@@ -89,8 +149,26 @@ func main() {
 			Name: to.StringPtr("testfdname"),
 			Type: frontdoor.MicrosoftNetworkfrontDoors,
 		})
+
 		if err != nil {
 			log.WithError(err).Fatal("Failed to check fd name")
+		}
+
+		_, err = fdFrontendEndpointClient.CreateOrUpdate(ctx, "resourceGroupName", "testfdname", "fdFrontendEndpoint", fdFrontendEndpoint)
+
+		if err != nil {
+			log.WithError(err).Fatal("Faild to create FrontendEndpoint")
+		}
+
+		_, err = fdBackendClient.CreateOrUpdate(ctx, "resourceGroupName", "testfdname", "fdBackendPool", fdbackendPool)
+
+		if err != nil {
+			log.WithError(err).Fatal("Faild to create BackendPool")
+		}
+		_, err = fdRoutingRulesClient.CreateOrUpdate(ctx, "resourceGroupName", "testfdname", "fdRoutingRule", fdRoutingRule)
+
+		if err != nil {
+			log.WithError(err).Fatal("Faild to create RoutingRules")
 		}
 
 		for _, rule := range ingress.Spec.Rules {
