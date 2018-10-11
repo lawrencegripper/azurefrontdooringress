@@ -12,11 +12,13 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
+	v1 "k8s.io/api/core/v1"
 	v1beta1 "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -43,19 +45,29 @@ func main() {
 
 	stopChan := make(chan struct{})
 
-	informer := infFactory.Extensions().V1beta1().Ingresses().Informer()
-	store := informer.GetStore()
-	go informer.Run(stopChan)
+	ingressInformer := infFactory.Extensions().V1beta1().Ingresses().Informer()
+	ingressStore := ingressInformer.GetStore()
+
+	serviceInformer := infFactory.Core().V1().Services().Informer()
+	serviceStore := serviceInformer.GetStore()
+
+	go ingressInformer.Run(stopChan)
+	go serviceInformer.Run(stopChan)
 
 	time.Sleep(15 * time.Second)
 
 	log.Info("Resyncing data store")
-	err = store.Resync()
+	err = ingressStore.Resync()
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(store.List())
+	serviceIP, err := getServiceIP(serviceStore)
+	if err != nil {
+		log.WithError(err).Fatal("Error getting service")
+	}
+
+	fmt.Println(serviceIP)
 
 	fdBackendClient := frontdoor.NewBackendPoolsClient(subID)
 	// create an authorizer from env vars or Azure Managed Service Idenity
@@ -64,19 +76,59 @@ func main() {
 		fdBackendClient.Authorizer = authorizer
 	}
 
-	for _, ingressObj := range store.List() {
+	for _, ingressObj := range ingressStore.List() {
 		ingress := ingressObj.(*v1beta1.Ingress)
-		result, err := fdBackendClient.CheckFrontDoorNameAvailability(ctx, frontdoor.CheckNameAvailabilityInput{
+		if !hasFrontdoorEnabledAnnotation(ingress.Annotations) {
+			log.WithField("ingressName", ingress.Name).Info("Skipping ingress as isn't annotated")
+			continue
+		}
+
+		log.WithField("ingressName", ingress.Name).Info("Found ingress for frontdoor to route")
+
+		_, err := fdBackendClient.CheckFrontDoorNameAvailability(ctx, frontdoor.CheckNameAvailabilityInput{
 			Name: to.StringPtr("testfdname"),
 			Type: frontdoor.MicrosoftNetworkfrontDoors,
 		})
 		if err != nil {
 			log.WithError(err).Fatal("Failed to check fd name")
 		}
-		fmt.Println(result)
-		fmt.Println(ingress.GetName())
+
+		for _, rule := range ingress.Spec.Rules {
+			log.WithField("path", rule.HTTP.Paths[0].Path).Info("Found rule for path")
+		}
 	}
 
+}
+
+func getServiceIP(serviceStore cache.Store) (string, error) {
+	services := serviceStore.List()
+
+	var serviceIP string
+	for _, serviceObj := range services {
+		service := serviceObj.(*v1.Service)
+		if hasFrontdoorEnabledAnnotation(service.Annotations) {
+			if len(service.Status.LoadBalancer.Ingress) > 0 {
+				serviceIP = service.Status.LoadBalancer.Ingress[0].IP
+				log.
+					WithField("serviceName", service.Name).
+					WithField("ip", serviceIP).
+					Info("Found service for Frontdoor to use")
+			}
+		}
+	}
+	if serviceIP == "" {
+		return serviceIP, fmt.Errorf("no service found with annotation 'azure/frontdoor:enabled' found")
+	}
+
+	return serviceIP, nil
+}
+
+func hasFrontdoorEnabledAnnotation(annotations map[string]string) bool {
+	annotation, exists := annotations["azure/frontdoor"]
+	if exists && annotation == "enabled" {
+		return true
+	}
+	return false
 }
 
 func getClientSet() (*kubernetes.Clientset, error) {
