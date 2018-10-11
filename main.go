@@ -171,8 +171,6 @@ func main() {
 			log.WithError(err).Fatal("Faild to create RoutingRules")
 		}
 
-		fmt.Println(result)
-		fmt.Println(ingress.GetName())
 		for _, rule := range ingress.Spec.Rules {
 			log.WithField("path", rule.HTTP.Paths[0].Path).Info("Found rule for path")
 		}
