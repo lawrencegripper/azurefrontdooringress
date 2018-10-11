@@ -3,11 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/http/httputil"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/frontdoor/mgmt/2018-08-01-preview/frontdoor"
+	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/joho/godotenv"
@@ -26,6 +29,34 @@ const (
 	namespace = "default"
 )
 
+func LogRequest() autorest.PrepareDecorator {
+	return func(p autorest.Preparer) autorest.Preparer {
+		return autorest.PreparerFunc(func(r *http.Request) (*http.Request, error) {
+			r, err := p.Prepare(r)
+			if err != nil {
+				log.Println(err)
+			}
+			dump, _ := httputil.DumpRequestOut(r, true)
+			log.Println(string(dump))
+			return r, err
+		})
+	}
+}
+
+func LogResponse() autorest.RespondDecorator {
+	return func(p autorest.Responder) autorest.Responder {
+		return autorest.ResponderFunc(func(r *http.Response) error {
+			err := p.Respond(r)
+			if err != nil {
+				log.Println(err)
+			}
+			dump, _ := httputil.DumpResponse(r, true)
+			log.Println(string(dump))
+			return err
+		})
+	}
+}
+
 func main() {
 	ctx := context.Background()
 
@@ -35,6 +66,11 @@ func main() {
 	}
 
 	subID := os.Getenv("AZURE_SUBSCRIPTION_ID")
+	resourceGroupName := os.Getenv("AZURE_RESOURCE_GROUP_NAME")
+	frontDoorName := os.Getenv("AZURE_FRONTDOOR_NAME")
+	// clusterName := os.Getenv("CLUSTER_NAME")
+	backendPoolName := os.Getenv("BACKENDPOOL_NAME")
+	frontdoorHostname := os.Getenv("AZURE_FRONTDOOR_HOSTNAME")
 
 	resyncPeriod := 30 * time.Second
 	client, _ := getClientSet()
@@ -71,62 +107,16 @@ func main() {
 
 	fdBackendClient := frontdoor.NewBackendPoolsClient(subID)
 
-	//create Backend object
-	fdBackend := frontdoor.Backend{
-		Address:      to.StringPtr("backend1"),
-		HTTPPort:     to.Int32Ptr(80),
-		HTTPSPort:    to.Int32Ptr(443),
-		EnabledState: frontdoor.EnabledStateEnumDisabled,
-		Weight:       to.Int32Ptr(50),
-		Priority:     to.Int32Ptr(1)}
-
-	// creating BackendPoolProperties
-	slices := &[]frontdoor.Backend{fdBackend}
-
-	subResourceHealth := &frontdoor.SubResource{
-		ID: to.StringPtr("GEN-UNIQUE" + "/healthProbeSettings/healthProbeSettings1")}
-
-	subResourceLoad := &frontdoor.SubResource{
-		ID: to.StringPtr("GEN-UNIQUE" + "/healthProbeSettings/healthProbeSettings1")}
-
-	fdbackendPoolProp := &frontdoor.BackendPoolProperties{
-		ResourceState:         frontdoor.ResourceStateCreating,
-		Backends:              slices,
-		HealthProbeSettings:   subResourceHealth,
-		LoadBalancingSettings: subResourceLoad}
-
-	// creating BackendPool
-	fdbackendPool := frontdoor.BackendPool{
-		BackendPoolProperties: fdbackendPoolProp,
-		Name: to.StringPtr("backendPool1"),
-		Type: to.StringPtr("Custom host"),
-		ID:   to.StringPtr("1234")}
-
 	//create frontend Endpoint
 	fdFrontendEndpointClient := frontdoor.NewFrontendEndpointsClient(subID)
-	fdFrontendEndpoint := frontdoor.FrontendEndpoint{
-		Name: to.StringPtr("frontendEndpoint1")}
+	fdClient := frontdoor.NewFrontDoorsClient(subID)
 
 	//create routing door client
 	fdRoutingRulesClient := frontdoor.NewRoutingRulesClient(subID)
-
-	subResourceFrontendEndpoints := frontdoor.SubResource{
-		ID: to.StringPtr("frontendEndpoint1" + "/frontendEndpoints/frontendEndpoint1")}
-
-	frontendEndpointSlices := &[]frontdoor.SubResource{subResourceFrontendEndpoints}
-	subResourceBackendPool := &frontdoor.SubResource{
-		ID: to.StringPtr("backendPool1" + "/backendPools/backendPool1")}
-
-	fdRoutingRuleProperties := frontdoor.RoutingRuleProperties{
-		ResourceState:      frontdoor.ResourceStateCreating,
-		EnabledState:       "Enabled",
-		ForwardingProtocol: "MatchRequest",
-		FrontendEndpoints:  frontendEndpointSlices,
-		BackendPool:        subResourceBackendPool}
-
-	fdRoutingRule := frontdoor.RoutingRule{
-		RoutingRuleProperties: &fdRoutingRuleProperties,
-		Name: to.StringPtr("routing1")}
+	fdLoadbalancerSettingsClient := frontdoor.NewLoadBalancingSettingsClient(subID)
+	fdLoadbalancerSettingsClient.RequestInspector = LogRequest()
+	fdLoadbalancerSettingsClient.ResponseInspector = LogResponse()
+	fdHealthCheckClient := frontdoor.NewHealthProbeSettingsClient(subID)
 
 	// create an authorizer from env vars or Azure Managed Service Idenity
 	authorizer, err := auth.NewAuthorizerFromEnvironment()
@@ -134,6 +124,74 @@ func main() {
 		fdBackendClient.Authorizer = authorizer
 		fdRoutingRulesClient.Authorizer = authorizer
 		fdFrontendEndpointClient.Authorizer = authorizer
+		fdLoadbalancerSettingsClient.Authorizer = authorizer
+		fdHealthCheckClient.Authorizer = authorizer
+		fdClient.Authorizer = authorizer
+	}
+
+	fdBackend := frontdoor.Backend{
+		Address:      to.StringPtr(serviceIP),
+		HTTPPort:     to.Int32Ptr(80),
+		HTTPSPort:    to.Int32Ptr(443),
+		EnabledState: frontdoor.EnabledStateEnumEnabled,
+		Weight:       to.Int32Ptr(50),
+		Priority:     to.Int32Ptr(1),
+	}
+
+	// Check if there is already a backend pool
+	existingBackendPool, err := fdBackendClient.Get(ctx, resourceGroupName, frontDoorName, backendPoolName)
+	if err != nil {
+
+		lbdetails, err := fdLoadbalancerSettingsClient.ListByFrontDoor(ctx, resourceGroupName, frontDoorName)
+
+		log.WithField("fsLbs", lbdetails.Values()).Info("Found existing lbs")
+
+		lbSettings, err := fdLoadbalancerSettingsClient.CreateOrUpdate(ctx, resourceGroupName, frontDoorName, "loadBalancingSettings-1539281898722", frontdoor.LoadBalancingSettingsModel{
+			LoadBalancingSettingsProperties: &frontdoor.LoadBalancingSettingsProperties{
+				AdditionalLatencyMilliseconds: to.Int32Ptr(0),
+				SampleSize:                    to.Int32Ptr(4),
+				SuccessfulSamplesRequired:     to.Int32Ptr(2),
+			},
+			// Name: to.StringPtr("testlbname"),
+			// Type: to.StringPtr("Microsoft.Network/Frontdoors/LoadBalancingSettings"),
+		})
+		if err != nil {
+			log.WithError(err).Panic("Failed to create lb settings object")
+		}
+
+		log.WithField("lgSettings", lbSettings).Info("Created lb settings")
+
+		// creating BackendPoolProperties
+		backends := &[]frontdoor.Backend{fdBackend}
+
+		// Create a backend pool if it doesn't already exist
+		createFuture, err := fdBackendClient.CreateOrUpdate(ctx, resourceGroupName, frontDoorName, backendPoolName, frontdoor.BackendPool{
+			Name: to.StringPtr(backendPoolName),
+			BackendPoolProperties: &frontdoor.BackendPoolProperties{
+				Backends: backends,
+			},
+		})
+
+		if err != nil {
+			log.WithError(err).Panic("Creating backend pool failed")
+		}
+
+		bp, err := createFuture.Result(fdBackendClient)
+		if err != nil {
+			log.WithError(err).Panic("Creating backend pool failed after wait")
+		}
+
+		existingBackendPool = bp
+
+	}
+
+	var entrypointToUser frontdoor.FrontendEndpoint
+	// Get existing Entrypoints
+	existingEntrypoints, err := fdFrontendEndpointClient.ListByFrontDoor(ctx, resourceGroupName, frontDoorName)
+	for _, entrypoint := range existingEntrypoints.Values() {
+		if *entrypoint.HostName == frontdoorHostname {
+			entrypointToUser = entrypoint
+		}
 	}
 
 	for _, ingressObj := range ingressStore.List() {
@@ -145,34 +203,36 @@ func main() {
 
 		log.WithField("ingressName", ingress.Name).Info("Found ingress for frontdoor to route")
 
-		_, err := fdBackendClient.CheckFrontDoorNameAvailability(ctx, frontdoor.CheckNameAvailabilityInput{
-			Name: to.StringPtr("testfdname"),
-			Type: frontdoor.MicrosoftNetworkfrontDoors,
-		})
-
-		if err != nil {
-			log.WithError(err).Fatal("Failed to check fd name")
-		}
-
-		_, err = fdFrontendEndpointClient.CreateOrUpdate(ctx, "resourceGroupName", "testfdname", "fdFrontendEndpoint", fdFrontendEndpoint)
-
-		if err != nil {
-			log.WithError(err).Fatal("Faild to create FrontendEndpoint")
-		}
-
-		_, err = fdBackendClient.CreateOrUpdate(ctx, "resourceGroupName", "testfdname", "fdBackendPool", fdbackendPool)
-
-		if err != nil {
-			log.WithError(err).Fatal("Faild to create BackendPool")
-		}
-		_, err = fdRoutingRulesClient.CreateOrUpdate(ctx, "resourceGroupName", "testfdname", "fdRoutingRule", fdRoutingRule)
-
-		if err != nil {
-			log.WithError(err).Fatal("Faild to create RoutingRules")
-		}
-
-		for _, rule := range ingress.Spec.Rules {
+		for i, rule := range ingress.Spec.Rules {
 			log.WithField("path", rule.HTTP.Paths[0].Path).Info("Found rule for path")
+
+			//Build all paths
+			paths := make([]string, len(rule.HTTP.Paths))
+			for _, path := range rule.HTTP.Paths {
+				paths = append(paths, path.Path)
+			}
+
+			fdRoutingRuleProperties := frontdoor.RoutingRuleProperties{
+				EnabledState:       "Enabled",
+				ForwardingProtocol: "MatchRequest",
+				FrontendEndpoints: &[]frontdoor.SubResource{
+					{ID: entrypointToUser.ID},
+				},
+				BackendPool: &frontdoor.SubResource{
+					ID: existingBackendPool.ID,
+				},
+				PatternsToMatch: &paths,
+			}
+
+			fdRoutingRule := frontdoor.RoutingRule{
+				RoutingRuleProperties: &fdRoutingRuleProperties,
+			}
+
+			_, err = fdRoutingRulesClient.CreateOrUpdate(ctx, resourceGroupName, frontDoorName, fmt.Sprintf("%v-rule-%v", ingress.Name, i), fdRoutingRule)
+
+			if err != nil {
+				log.WithError(err).Fatal("Faild to create RoutingRules")
+			}
 		}
 	}
 
