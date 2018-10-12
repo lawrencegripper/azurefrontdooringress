@@ -29,7 +29,7 @@ const (
 	namespace = "default"
 )
 
-func LogRequest() autorest.PrepareDecorator {
+func logRequest() autorest.PrepareDecorator {
 	return func(p autorest.Preparer) autorest.Preparer {
 		return autorest.PreparerFunc(func(r *http.Request) (*http.Request, error) {
 			r, err := p.Prepare(r)
@@ -43,7 +43,7 @@ func LogRequest() autorest.PrepareDecorator {
 	}
 }
 
-func LogResponse() autorest.RespondDecorator {
+func logResponse() autorest.RespondDecorator {
 	return func(p autorest.Responder) autorest.Responder {
 		return autorest.ResponderFunc(func(r *http.Response) error {
 			err := p.Respond(r)
@@ -114,8 +114,8 @@ func main() {
 	//create routing door client
 	fdRoutingRulesClient := frontdoor.NewRoutingRulesClient(subID)
 	fdLoadbalancerSettingsClient := frontdoor.NewLoadBalancingSettingsClient(subID)
-	fdLoadbalancerSettingsClient.RequestInspector = LogRequest()
-	fdLoadbalancerSettingsClient.ResponseInspector = LogResponse()
+	fdLoadbalancerSettingsClient.RequestInspector = logRequest()
+	fdLoadbalancerSettingsClient.ResponseInspector = logResponse()
 	fdHealthCheckClient := frontdoor.NewHealthProbeSettingsClient(subID)
 
 	// create an authorizer from env vars or Azure Managed Service Idenity
@@ -152,8 +152,6 @@ func main() {
 				SampleSize:                    to.Int32Ptr(4),
 				SuccessfulSamplesRequired:     to.Int32Ptr(2),
 			},
-			// Name: to.StringPtr("testlbname"),
-			// Type: to.StringPtr("Microsoft.Network/Frontdoors/LoadBalancingSettings"),
 		})
 		if err != nil {
 			log.WithError(err).Panic("Failed to create lb settings object")
