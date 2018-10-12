@@ -12,9 +12,18 @@ helm install stable/nginx-ingress  --namespace kube-system --set rbac.create=fal
 
 1. Set up Azure Front Door.  Azure Front Door can be setup in the Portal, using an Azure CLI extension or via [ARM Templates.](https://docs.microsoft.com/en-us/azure/frontdoor/front-door-quickstart-template-samples)
 
+To deploy the template:
 ~~~
 az group deployment create --name ExampleDeployment --resource-group ExampleGroup --template-file frontdoor.json --parameters @frontdoor.parameters.json
 ~~~ 
+
+To deploy via CLI:
+
+~~~
+az network front-door create -g <GroupName> -n <AFD Name> --backend-address <IP Address>
+
+az network front-door backend-pool backend add --address <IP Address> -f <AFDName> --pool-name DefaultBackendPool -g <GroupName>
+~~~
 
 1. Install the Kubernetes Front Door Controller
 
