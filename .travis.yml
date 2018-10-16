@@ -16,8 +16,6 @@ before_install:
   - go get -u github.com/alecthomas/gometalinter
   - gometalinter --install
 
-script:
-- make
 
 jobs:
   include:
