@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: disabled
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: test-ingress
+  namespace: disabled
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    azure/frontdoor: disabled
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /testpath
+        backend:
+          serviceName: test
+          servicePort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: traefik
+    chart: traefik-1.50.0
+    heritage: Tiller
+    release: turbulent-aardvark
+  name: turbulent-aardvark-traefik
+  namespace: disabled
+  annotations:
+    azure/frontdoor: disabled
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: httpn
+  selector:
+    app: traefik
+    release: turbulent-aardvark
+  sessionAffinity: None
+  type: LoadBalancer

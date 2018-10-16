@@ -18,3 +18,10 @@ before_install:
 
 script:
 - make
+
+jobs:
+  include:
+    - stage: build
+      script: make
+    - stage: integration-test
+      script: bash -f ./scripts/startminikube.sh && make integration
