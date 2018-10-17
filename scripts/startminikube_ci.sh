@@ -3,6 +3,8 @@ set -e
 
 # Adapted from: https://github.com/LiliC/travis-minikube/blob/minikube-26-kube-1.10/.travis.yml
 
+export CHANGE_MINIKUBE_NONE_USER=true
+
 echo "--> Downloading minikube"
 # Make root mounted as rshared to fix kube-dns issues.
 sudo mount --make-rshared /
