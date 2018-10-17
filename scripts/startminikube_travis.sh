@@ -25,3 +25,7 @@ JSONPATH='{range .items[*]}{@.metadata.name}:{range @.status.conditions[*]}{@.ty
 
 echo "--> Get cluster details to check its running"
 kubectl cluster-info
+
+echo "--> Setup support for external IPs in LoadBalancer services"
+# See workaround details here: https://github.com/elsonrodriguez/minikube-lb-patch
+kubectl run minikube-lb-patch --replicas=1 --image=elsonrodriguez/minikube-lb-patch:0.1 --namespace=kube-system

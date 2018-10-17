@@ -10,7 +10,7 @@ test:
 
 integration:
 	bash -f ./scripts/clustertestsetup.sh
-	go test -timeout 5m ./...
+	go test -v -timeout 5m ./...
 
 build:
 	go build .
