@@ -3,6 +3,8 @@ set -e
 
 # Adapted from: https://github.com/LiliC/travis-minikube/blob/minikube-26-kube-1.10/.travis.yml
 
+export CHANGE_MINIKUBE_NONE_USER=true
+
 echo "--> Downloading minikube"
 # Make root mounted as rshared to fix kube-dns issues.
 sudo mount --make-rshared /
@@ -13,6 +15,9 @@ curl -Lo minikube https://storage.googleapis.com/minikube/releases/v0.30.0/minik
 
 echo "--> Starting minikube"
 sudo minikube start --vm-driver=none --bootstrapper=kubeadm --kubernetes-version=v1.12.0
+# Fix permissions issue in AzurePipelines
+sudo chmod --recursive 777 $HOME/.minikube
+sudo chmod --recursive 777 $HOME/.kube
 # Fix the kubectl context, as it's often stale.
 minikube update-context
 

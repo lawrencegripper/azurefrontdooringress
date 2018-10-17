@@ -19,4 +19,4 @@ jobs:
     - stage: build
       script: bash -f ./scripts/installtools.sh && make
     - stage: integration-test
-      script: bash -f ./scripts/startminikube_travis.sh && make integration
+      script: bash -f ./scripts/startminikube_ci.sh && make integration

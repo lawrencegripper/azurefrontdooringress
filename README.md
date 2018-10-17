@@ -1,6 +1,7 @@
 # Azure Frontdoor Ingress
 
 [![Build Status](https://travis-ci.com/lawrencegripper/azurefrontdooringress.svg?branch=master)](https://travis-ci.com/lawrencegripper/azurefrontdooringress)
+[![Build Status](https://dev.azure.com/lawrencegripper/azurefrontdooringress/_apis/build/status/lawrencegripper.azurefrontdooringress?branchName=master)](https://dev.azure.com/lawrencegripper/azurefrontdooringress/_build/latest?definitionId=1)
 
 ## Status: WIP - Not working
 
