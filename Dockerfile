@@ -1,7 +1,7 @@
 # BUILDER
 FROM golang:1.10 AS builder
-COPY . /go/src/github.com/lawrencegripper/azurefrontdoor-ingress
-WORKDIR /go/src/github.com/lawrencegripper/azurefrontdoor-ingress
+COPY . /go/src/github.com/lawrencegripper/azurefrontdooringress
+WORKDIR /go/src/github.com/lawrencegripper/azurefrontdooringress
 RUN CGO_ENABLED=0 GOOS=linux go install -a -installsuffix cgo
 
 # RUNNER
@@ -10,6 +10,6 @@ ARG SERVICE=dispatcher
 RUN apk --no-cache --update add \
     ca-certificates
 WORKDIR /usr/local/bin
-COPY --from=builder /go/bin/azurefrontdoor-ingress .
+COPY --from=builder /go/bin/azurefrontdooringress .
 
 ENTRYPOINT ["azurefrontdoor-ingress"]

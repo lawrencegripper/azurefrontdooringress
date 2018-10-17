@@ -1,5 +1,7 @@
 # Azure Frontdoor Ingress
 
+[![Build Status](https://travis-ci.com/lawrencegripper/azurefrontdooringress.svg?branch=master)](https://travis-ci.com/lawrencegripper/azurefrontdooringress)
+
 ## Status: WIP - Not working
 
 The current code is blocked on [this issue we're seeing with FD API](https://github.com/Azure/azure-rest-api-specs/issues/4221). 
