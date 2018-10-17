@@ -11,6 +11,7 @@ variables:
   GOROOT: '/usr/local/go1.11' # Go installation path
   GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
   modulePath: '$(GOPATH)/src/github.com/$(build.repository.name)' # Path to the module's code
+  CHANGE_MINIKUBE_NONE_USER: true
 
 steps:
 - script: |
@@ -24,5 +25,7 @@ steps:
   displayName: 'Set up the Go workspace'
 - script: bash -f ./scripts/installtools.sh && make
   displayName: 'Build Go and Docker image'
+  workingDirectory: '$(modulePath)'
 - script: bash -f ./scripts/startminikube_travis.sh && make integration
   displayName: 'Run integration tests with Minikube'
+  workingDirectory: '$(modulePath)'
