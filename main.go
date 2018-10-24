@@ -26,6 +26,8 @@ func main() {
 		FrontDoorName:       os.Getenv("AZURE_FRONTDOOR_NAME"),
 		FrontDoorHostname:   os.Getenv("AZURE_FRONTDOOR_HOSTNAME"),
 		KubernetesNamespace: os.Getenv("KUBERNETES_NAMESPACE"),
+		StorageAccountURL:   os.Getenv("STORAGE_ACCOUNT_URL"),
+		StorageAccountKey:   os.Getenv("STORAGE_ACCOUNT_KEY"),
 	}
 
 	logger := log.WithField("config", syncConfig)
