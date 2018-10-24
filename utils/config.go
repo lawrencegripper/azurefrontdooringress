@@ -11,4 +11,6 @@ type Config struct {
 	SubscriptionID         string
 	KubernetesNamespace    string
 	DebugAPICalls          bool
+	StorageAccountURL      string
+	StorageAccountKey      string
 }

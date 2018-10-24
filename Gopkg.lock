@@ -2,6 +2,14 @@
 
 
 [[projects]]
+  digest = "1:d2ccb697dc13c8fbffafa37baae97594d5592ae8f7e113471084137315536e2b"
+  name = "github.com/Azure/azure-pipeline-go"
+  packages = ["pipeline"]
+  pruneopts = "UT"
+  revision = "b8e3409182fd52e74f7d7bdfbff5833591b3b655"
+  version = "v0.1.8"
+
+[[projects]]
   digest = "1:c03c6140507e5a363236d330fe81da13a98d961cc20e03275ab17eeaf3508165"
   name = "github.com/Azure/azure-sdk-for-go"
   packages = [
@@ -11,6 +19,14 @@
   pruneopts = "UT"
   revision = "6d20bdbae88c06c36d72eb512295417693bfdf4e"
   version = "v21.1.0"
+
+[[projects]]
+  digest = "1:bd689d3424997113c8ecb847c5731ac8eef07e349d2fad69fea6534847b3427d"
+  name = "github.com/Azure/azure-storage-blob-go"
+  packages = ["2016-05-31/azblob"]
+  pruneopts = "UT"
+  revision = "bb46532f68b79e9e1baca8fb19a382ef5d40ed33"
+  version = "0.2.0"
 
 [[projects]]
   digest = "1:b8a61bb5402d1b01ada88ccb213da33a5d29683cba5ce93813aa67d5826afe56"
@@ -29,6 +45,14 @@
   pruneopts = "UT"
   revision = "9bc4033dd347c7f416fca46b2f42a043dc1fbdf6"
   version = "v10.15.5"
+
+[[projects]]
+  digest = "1:2209584c0f7c9b68c23374e659357ab546e1b70eec2761f03280f69a8fd23d77"
+  name = "github.com/cenkalti/backoff"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "2ea60e5f094469f9e65adb9cd103795b73ae743e"
+  version = "v2.0.0"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -178,6 +202,14 @@
   version = "v1.0.1"
 
 [[projects]]
+  digest = "1:4f97c8e9bdf22d42e40fe07d7bb3f794d0bf3942dcf3146f4a2870f00577e217"
+  name = "github.com/lawrencegripper/goazurelocking"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "674c6b2d4d35babd3bf589c64ae3a8284d8ea252"
+  version = "1.0"
+
+[[projects]]
   digest = "1:33422d238f147d247752996a26574ac48dcf472976eda7f5134015f06bf16563"
   name = "github.com/modern-go/concurrent"
   packages = ["."]
@@ -208,6 +240,14 @@
   pruneopts = "UT"
   revision = "5f041e8faa004a95c88a202771f4cc3e991971e6"
   version = "v2.0.1"
+
+[[projects]]
+  digest = "1:274f67cb6fed9588ea2521ecdac05a6d62a8c51c074c1fccc6a49a40ba80e925"
+  name = "github.com/satori/go.uuid"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:3f53e9e4dfbb664cd62940c9c4b65a2171c66acd0b7621a1a6b8e78513525a52"
@@ -568,15 +608,19 @@
   analyzer-version = 1
   input-imports = [
     "github.com/Azure/azure-sdk-for-go/services/preview/frontdoor/mgmt/2018-08-01-preview/frontdoor",
+    "github.com/Azure/go-autorest/autorest",
     "github.com/Azure/go-autorest/autorest/azure/auth",
     "github.com/Azure/go-autorest/autorest/to",
     "github.com/joho/godotenv",
+    "github.com/lawrencegripper/goazurelocking",
     "github.com/sirupsen/logrus",
+    "k8s.io/api/core/v1",
     "k8s.io/api/extensions/v1beta1",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/client-go/informers",
     "k8s.io/client-go/kubernetes",
     "k8s.io/client-go/rest",
+    "k8s.io/client-go/tools/cache",
     "k8s.io/client-go/tools/clientcmd",
   ]
   solver-name = "gps-cdcl"
